@@ -22,6 +22,7 @@ func main() {
         if err!=nil {
             break
         }
+        // parse response code here
     }
 }
 ```
