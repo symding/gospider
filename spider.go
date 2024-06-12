@@ -31,7 +31,7 @@ func NewSpider(worker int) Spider {
 		Jar:       Jar,
 		Transport: Transport,
 		Timeout:   time.Second * 30}
-	RChan := make(chan Request, worker)
+	RChan := make(chan Request, worker*2)
 	PChan := make(chan Response)
 	return Spider{
 		RequestQueue:  RChan,
@@ -103,8 +103,10 @@ func (s *Spider) spider(wg *sync.WaitGroup) {
 		}
 		clientResp, err := client.Client.Do(clientReq)
 		resp := Response{
-			Request: req,
-			Error:   err,
+			Request:    req,
+			Error:      err,
+			Meta:       req.Meta,
+			StatusCode: clientResp.StatusCode,
 		}
 		if err == nil {
 			defer clientResp.Body.Close()
@@ -139,3 +141,6 @@ func (s *Spider) RandTransport() {
 	s.Client.Transport = transport
 }
 
+func (s *Spider) Close() {
+	close(s.RequestQueue)
+}

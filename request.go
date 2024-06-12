@@ -9,6 +9,6 @@ type Request struct {
 	Proxy       string
 	Cookie      []*http.Cookie
 	MaxRetryNum int
-	Meta        any
+	Meta        map[string]any
 	Headers     map[string]string
 }
