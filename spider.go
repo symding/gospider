@@ -94,7 +94,7 @@ func (s *Spider) spider(wg *sync.WaitGroup) {
 		}
 		reqURL, _ := url.Parse(req.Url)
 		if req.Cookie != nil {
-			client.Jar.SetCookies(reqURL, req.Cookie)
+			s.Client.Jar.SetCookies(reqURL, req.Cookie)
 		}
 		clientReq, _ := http.NewRequest("GET", req.Url, nil)
 		clientReq.Close = true
