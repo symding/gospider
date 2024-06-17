@@ -3,7 +3,6 @@ package gospider
 import (
 	"crypto/tls"
 	"fmt"
-	"go-crawler/client"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -101,7 +100,7 @@ func (s *Spider) spider(wg *sync.WaitGroup) {
 		for k, v := range req.Headers {
 			clientReq.Header.Set(k, v)
 		}
-		clientResp, err := client.Client.Do(clientReq)
+		clientResp, err := s.Client.Do(clientReq)
 		resp := Response{
 			Request:    req,
 			Error:      err,
