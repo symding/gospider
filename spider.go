@@ -2,12 +2,15 @@ package gospider
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	tlsx "github.com/refraction-networking/utls"
@@ -49,26 +52,39 @@ type Spider struct {
 	Client        *http.Client
 	Transport     *http.Transport
 	WorkerNum     int
+	Stat          spiderStat
+	close         bool
 }
 
-// AddRequest 向请求队列添加新的请求
-func (s *Spider) AddRequest(r Request) {
+/*
+AddRequest 向请求队列添加新的请求
+
+	返回任务队列状态，
+*/
+func (s *Spider) AddRequest(r Request) bool {
 	s.RequestQueue <- r
+	s.Stat.RequestIncr()
+	return !s.close
 }
 
 // GetResponse 获取响应队列中的数据
-func (s *Spider) GetResponse() (Response, error) {
+func (s *Spider) GetResponse() (Response, bool) {
 	resp, ok := <-s.ResponseQueue
 	if ok {
-		return resp, nil
+		s.Stat.ResponseIncr(resp)
+		return resp, ok
 	}
-	return Response{}, fmt.Errorf("Response queue closed.\n")
+	s.Stat.Stop()
+	return Response{}, ok
 }
 
 /*
 Run 开始执行爬虫
 */
 func (s *Spider) Run() {
+	s.Stat = newSpiderStat()
+	go s.Signal()
+	defer log.Println("Response queue closed.")
 	defer close(s.ResponseQueue)
 	wg := sync.WaitGroup{}
 	wg.Add(s.WorkerNum)
@@ -76,6 +92,15 @@ func (s *Spider) Run() {
 		go s.spider(&wg)
 	}
 	wg.Wait()
+}
+
+// Signal 捕获信号量并处理
+func (s *Spider) Signal() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-sigs
+	log.Printf("Received signal: %s\n", sig)
+	s.close = true
 }
 
 func (s *Spider) spider(wg *sync.WaitGroup) {
@@ -112,6 +137,7 @@ func (s *Spider) spider(wg *sync.WaitGroup) {
 			body, err := io.ReadAll(clientResp.Body)
 			if err == nil {
 				resp.Content = string(body)
+				resp.Xpath = NewXpathParser(body)
 			}
 		}
 		s.ResponseQueue <- resp
@@ -142,4 +168,5 @@ func (s *Spider) RandTransport() {
 
 func (s *Spider) Close() {
 	close(s.RequestQueue)
+	log.Println("Request queue closed.")
 }

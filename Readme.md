@@ -22,6 +22,7 @@ func main() {
         if err!=nil {
             break
         }
+        response.Xpath.ExtractFirst("//div[@class='mnav']/a/@href")
         // parse response code here
     }
 }
